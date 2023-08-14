@@ -52,6 +52,11 @@ Present modal view:
 coordinator.present(.modalFlow())
 ```
 
+Current coordinator passed to child views as environment object:
+```swift
+@EnvironmentObject var coordinator: SomeCoordinator
+```
+
 ## Meta
 
 Ilya Kuznetsov – i.v.kuznecov@gmail.com
