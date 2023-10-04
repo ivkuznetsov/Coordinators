@@ -67,7 +67,6 @@ private struct NavigationModifer<Coordinator: NavigationCoordinator>: ViewModifi
     
     let coordinator: Coordinator
     @ObservedObject var state: NavigationState
-    @State var currentPath: [AnyHashable] = [] // we cannot use navigation path in @Publiched because of bug in modal sheet, where the first push happens without animation
     @State private var appeared = false
     
     init(coordinator: Coordinator) {
@@ -76,7 +75,7 @@ private struct NavigationModifer<Coordinator: NavigationCoordinator>: ViewModifi
     }
     
     public func body(content: Content) -> some View {
-        NavigationStack(path: $currentPath) {
+        NavigationStack(path: $state.path) {
             content.navigationDestination(for: AnyHashable.self) {
                 if let screen = $0 as? Coordinator.Screen {
                     coordinator.destination(for: screen)
@@ -84,18 +83,9 @@ private struct NavigationModifer<Coordinator: NavigationCoordinator>: ViewModifi
             }
         }.coordinateSpace(name: CoordinateSpace.navController)
             .navigationViewStyle(.stack)
-            .onChange(of: state.path, perform: {
-                if $0 != currentPath {
-                    currentPath = $0
-                }
-            }).onChange(of: currentPath, perform: {
-                if $0 != state.path {
-                    state.path = $0
-                }
-            }).onAppear(perform: {
+            .onAppear(perform: {
                 if !appeared {
                     appeared = true
-                    currentPath = coordinator.state.path
                 }
             })
     }
