@@ -68,7 +68,7 @@ public extension ModalCoordinator {
     ///Present a flow modally over current navigation
     func present(_ modalFlow: Modal, resolve: PresentationResolve = .overAll) {
         present(.init(modalFlow: modalFlow,
-                      destination: { AnyView(self.destination(for: modalFlow)) }),
+                      destination: { [unowned self] in AnyView(self.destination(for: modalFlow)) }),
                 resolve: resolve)
     }
 }
@@ -78,15 +78,15 @@ private struct ModalModifer: ViewModifier {
     @ObservedObject var state: NavigationState
     
     func isPresentedBinding(_ style: ModalStyle) -> Binding<Bool> {
-        .init {
-            state.modalPresented?.modalFlow.style == style
-        } set: { _ in
-            if let presented = state.modalPresented,
+        .init { [weak state] in
+            state?.modalPresented?.modalFlow.style == style
+        } set: { [weak state] _ in
+            if let presented = state?.modalPresented,
                let overlayPresented = presented.coordinator.state.modalPresented,
                overlayPresented.modalFlow.style == .overlay {
                 presented.coordinator.state.modalPresented = nil
             } else {
-                state.modalPresented = nil
+                state?.modalPresented = nil
             }
         }
     }
@@ -97,16 +97,16 @@ private struct ModalModifer: ViewModifier {
                 presented.destination()
                     .coordinateSpace(name: CoordinateSpace.modal)
             }
-        }.sheet(isPresented: isPresentedBinding(.sheet)) {
-            
-            state.modalPresented!.destination()
+        }.sheet(isPresented: isPresentedBinding(.sheet)) { [weak state] in
+            state?.modalPresented!.destination()
                 .coordinateSpace(name: CoordinateSpace.modal)
-            
-        }.fullScreenCover(isPresented: isPresentedBinding(.cover)) {
-            
-            state.modalPresented!.destination()
+        }.fullScreenCover(isPresented: isPresentedBinding(.cover)) { [weak state] in
+            state?.modalPresented!.destination()
                 .coordinateSpace(name: CoordinateSpace.modal)
-        }
+        }.alert(state.alerts.last?.title ?? "",
+                isPresented: Binding(get: { state.alerts.last != nil }, set: { _ in state.alerts.removeLast() } ),
+                actions: state.alerts.last?.actions ?? { AnyView(EmptyView()) },
+                message: state.alerts.last?.message ?? { AnyView(EmptyView()) })
     }
 }
 
@@ -114,7 +114,7 @@ public extension View {
     
     ///Supply view with ability to present screens using specified coordinator
     func withModal<C: Coordinator>(_ coordinator: C) -> some View {
-        modifier(ModalModifer(state: coordinator.state)).environmentObject(coordinator)
+        modifier(ModalModifer(state: coordinator.state)).environmentObject(coordinator.weakReference)
     }
 }
 

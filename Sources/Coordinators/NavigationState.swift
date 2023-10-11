@@ -26,7 +26,7 @@ public struct ModalPresentation {
             self.coordinator = coordinator
         } else {
             let coordinator = PlaceholderCoordinator()
-            self.destination = { AnyView(destination().withModal(coordinator)) }
+            self.destination = { [unowned coordinator] in AnyView(destination().withModal(coordinator)) }
             self.coordinator = coordinator
         }
     }
@@ -40,6 +40,21 @@ public final class NavigationState: ObservableObject {
     
     /// Modal flow presented over current navigation
     @Published public internal(set) var modalPresented: ModalPresentation?
+    
+    struct Alert {
+        let title: String
+        let actions: ()->AnyView
+        let message: ()->AnyView
+        
+        init<A: View, M: View>(title: String, actions: @escaping ()->A, message: @escaping ()->M) {
+            self.title = title
+            self.actions = { AnyView(actions()) }
+            self.message = { AnyView(message()) }
+        }
+    }
+    
+    /// Currently presented alerts
+    @Published var alerts: [Alert] = []
     
     /// Parent coordinator presented current navigation modally
     public internal(set) weak var presentedBy: (any Coordinator)?

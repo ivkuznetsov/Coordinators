@@ -54,9 +54,20 @@ import SwiftUI
 ///     coordinator.present(.modalFlow())
 ///
 
+public final class Navigation<C: Coordinator>: ObservableObject {
+    private(set) weak var object: C?
+    
+    public init(_ object: C) {
+        self.object = object
+    }
+    
+    public func callAsFunction() -> C { object! }
+}
+
 public protocol Coordinator: ObservableObject, Hashable { }
 
-private var coordinatorStateKey = "coordinatorStateKey"
+private var coordinatorStateKey = 0
+private var coordinatorWeakReferenceKey = 0
 
 public extension Coordinator {
     
@@ -71,8 +82,17 @@ public extension Coordinator {
                 return state
             }
         }
-        set {
-            objc_setAssociatedObject(self, &coordinatorStateKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    
+    var weakReference: Navigation<Self> {
+        get {
+            if let reference = objc_getAssociatedObject(self, &coordinatorWeakReferenceKey) as? Navigation<Self> {
+                return reference
+            } else {
+                let reference = Navigation(self)
+                objc_setAssociatedObject(self, &coordinatorWeakReferenceKey, state, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                return reference
+            }
         }
     }
     
@@ -120,6 +140,31 @@ extension Coordinator {
             presentation.coordinator.state.presentedBy = self
             state.modalPresented = presentation
         }
+    }
+}
+
+public extension Coordinator {
+    static var defaultAlertTitle: String { Bundle.main.infoDictionary!["CFBundleDisplayName"] as? String ?? Bundle.main.infoDictionary!["CFBundleName"] as? String ?? "" }
+    
+    func alert<A: View, M: View>(_ title: String = Self.defaultAlertTitle,
+                                 @ViewBuilder _ message: @escaping ()->M,
+                                 @ViewBuilder actions: @escaping ()->A) {
+        state.alerts.append(.init(title: title, actions: actions, message: message))
+    }
+    
+    func alert<M: View>(_ title: String = Self.defaultAlertTitle,
+                        @ViewBuilder _ message: @escaping ()->M) {
+        state.alerts.append(.init(title: title, actions: { Button("OK") {} }, message: message))
+    }
+    
+    func alert(_ title: String = Self.defaultAlertTitle, message: String) {
+        state.alerts.append(.init(title: title, actions: { Button("OK") {} }, message: { Text(message) }))
+    }
+    
+    func alert<A: View>(_ title: String = Self.defaultAlertTitle,
+                        message: String,
+                        @ViewBuilder actions: @escaping ()->A) {
+        state.alerts.append(.init(title: title, actions: actions, message: { Text(message) }))
     }
 }
 

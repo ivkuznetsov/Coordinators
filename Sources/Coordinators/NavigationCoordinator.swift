@@ -50,7 +50,7 @@ public extension NavigationCoordinator {
 public extension View {
     
     func withNavigation<C: NavigationCoordinator>(_ coordinator: C) -> some View {
-        modifier(NavigationModifer(coordinator: coordinator)).environmentObject(coordinator)
+        modifier(NavigationModifer(coordinator: coordinator))
     }
 }
 
@@ -67,7 +67,6 @@ private struct NavigationModifer<Coordinator: NavigationCoordinator>: ViewModifi
     
     let coordinator: Coordinator
     @ObservedObject var state: NavigationState
-    @State private var appeared = false
     
     init(coordinator: Coordinator) {
         self.coordinator = coordinator
@@ -75,18 +74,12 @@ private struct NavigationModifer<Coordinator: NavigationCoordinator>: ViewModifi
     }
     
     public func body(content: Content) -> some View {
-        NavigationStack(path: $state.path) {
+        NavigationStack(path: $state.path) { [weak coordinator] in
             content.navigationDestination(for: AnyHashable.self) {
                 if let screen = $0 as? Coordinator.Screen {
-                    coordinator.destination(for: screen)
+                    coordinator?.destination(for: screen)
                 }
             }
         }.coordinateSpace(name: CoordinateSpace.navController)
-            .navigationViewStyle(.stack)
-            .onAppear(perform: {
-                if !appeared {
-                    appeared = true
-                }
-            })
     }
 }
