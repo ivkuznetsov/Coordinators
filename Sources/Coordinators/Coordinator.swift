@@ -90,7 +90,7 @@ public extension Coordinator {
                 return reference
             } else {
                 let reference = Navigation(self)
-                objc_setAssociatedObject(self, &coordinatorWeakReferenceKey, state, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                objc_setAssociatedObject(self, &coordinatorWeakReferenceKey, reference, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
                 return reference
             }
         }
@@ -130,7 +130,7 @@ extension Coordinator {
             switch resolve {
             case .replaceCurrent:
                 dismissPresented()
-                DispatchQueue.main.async { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                     self?.present(presentation, resolve: resolve)
                 }
             case .overAll:
