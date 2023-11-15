@@ -71,7 +71,7 @@ public final class NavigationState: ObservableObject {
     }
     
     private func closeKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIApplication.resignFirstResponder), to: nil, from: nil, for: nil)
+        UIApplication.shared.resignFirstResponder()
     }
 }
 
