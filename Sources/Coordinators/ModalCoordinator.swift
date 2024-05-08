@@ -104,7 +104,11 @@ private struct ModalModifer: ViewModifier {
             state?.modalPresented!.destination()
                 .coordinateSpace(name: CoordinateSpace.modal)
         }.alert(state.alerts.last?.title ?? "",
-                isPresented: Binding(get: { state.alerts.last != nil }, set: { _ in state.alerts.removeLast() } ),
+                isPresented: Binding(get: { state.alerts.last != nil }, set: { _ in
+            if state.alerts.count > 0 {
+                state.alerts.removeLast()
+            }
+        } ),
                 actions: state.alerts.last?.actions ?? { AnyView(EmptyView()) },
                 message: state.alerts.last?.message ?? { AnyView(EmptyView()) })
     }
