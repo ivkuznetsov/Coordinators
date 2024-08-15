@@ -6,6 +6,7 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 ///Example of implementation:
 ///
@@ -56,9 +57,14 @@ import SwiftUI
 
 public final class Navigation<C: Coordinator>: ObservableObject {
     private(set) weak var object: C?
+    private var observer: AnyCancellable?
     
     public init(_ object: C) {
         self.object = object
+        
+        observer = object.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
     
     public func callAsFunction() -> C { object! }
