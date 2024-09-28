@@ -72,32 +72,37 @@ public final class Navigation<C: Coordinator>: ObservableObject {
 
 public protocol Coordinator: ObservableObject, Hashable { }
 
-private var coordinatorStateKey = 0
-private var coordinatorWeakReferenceKey = 0
+private var coordinatorStateKey: UInt8 = 0
+private var coordinatorWeakReferenceKey: UInt8 = 0
+private let syncQueue = DispatchQueue(label: "com.yourapp.coordinator.state")
 
 public extension Coordinator {
     
     ///Coordinator state, encapsulates current navigation path and presented modal flow and reference to parent coordinator
     var state: NavigationState {
         get {
-            if let state = objc_getAssociatedObject(self, &coordinatorStateKey) as? NavigationState {
-                return state
-            } else {
-                let state = NavigationState()
-                objc_setAssociatedObject(self, &coordinatorStateKey, state, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                return state
+            syncQueue.sync {
+                if let state = objc_getAssociatedObject(self, &coordinatorStateKey) as? NavigationState {
+                    return state
+                } else {
+                    let state = NavigationState()
+                    objc_setAssociatedObject(self, &coordinatorStateKey, state, .OBJC_ASSOCIATION_RETAIN)
+                    return state
+                }
             }
         }
     }
     
     var weakReference: Navigation<Self> {
         get {
-            if let reference = objc_getAssociatedObject(self, &coordinatorWeakReferenceKey) as? Navigation<Self> {
-                return reference
-            } else {
-                let reference = Navigation(self)
-                objc_setAssociatedObject(self, &coordinatorWeakReferenceKey, reference, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                return reference
+            syncQueue.sync {
+                if let reference = objc_getAssociatedObject(self, &coordinatorWeakReferenceKey) as? Navigation<Self> {
+                    return reference
+                } else {
+                    let reference = Navigation(self)
+                    objc_setAssociatedObject(self, &coordinatorWeakReferenceKey, reference, .OBJC_ASSOCIATION_RETAIN)
+                    return reference
+                }
             }
         }
     }
