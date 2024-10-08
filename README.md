@@ -11,7 +11,7 @@ Modal Presentation: Present modals, including entire navigation flows inside mod
 
 ## Example Usage
 
-###1. Defining a Coordinator
+### 1. Defining a Coordinator
 ```swift
 final class SomeCoordinator: NavigationModalCoordinator {
     
@@ -47,7 +47,7 @@ final class SomeCoordinator: NavigationModalCoordinator {
 }
 ```
 
-###2. Using the Coordinator
+### 2. Using the Coordinator
 You can use the coordinator to push views onto the navigation stack or present modals.
 
 Displaying a screen as the root view:
@@ -65,7 +65,7 @@ Presenting a modal flow:
 coordinator.present(.modalFlow())
 ```
 
-###3. Accessing the Coordinator in Views
+### 3. Accessing the Coordinator in Views
 
 You can access the current coordinator inside any view by injecting it as an environment object:
 ```swift
