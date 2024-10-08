@@ -6,7 +6,6 @@ import PackageDescription
 let package = Package(
     name: "Coordinators",
     platforms: [
-        .macOS(.v12),
         .iOS(.v15)
     ],
     products: [

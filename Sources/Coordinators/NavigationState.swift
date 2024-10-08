@@ -8,14 +8,20 @@ import Foundation
 import SwiftUI
 import Combine
 
-///Current modal presentation that stores parent coordinator
+///Structure that represents the current modal presentation in the navigation flow.
+///It holds the modal flow and the associated parent coordinator.
 public struct ModalPresentation {
     
+    ///A placeholder coordinator used when no coordinator is provided for the modal flow.
     private final class PlaceholderCoordinator: Coordinator { }
     
+    ///The modal flow that this presentation is handling.
     public let modalFlow: any ModalProtocol
     
+    ///The parent coordinator responsible for managing the modal flow.
     let coordinator: any Coordinator
+    
+    ///A closure that returns the view to be displayed for the modal.
     let destination: ()->AnyView
     
     init(modalFlow: any ModalProtocol, destination: @escaping () -> AnyView) {
@@ -32,13 +38,14 @@ public struct ModalPresentation {
     }
 }
 
-///Coordinator navigation state. Stores current navigation path and a reference to presented child navigation with reference to parent coordinator
+///Class that manages the navigation state for the coordinator.
+///It stores the current navigation path, presented modal flows, and any alerts.
 public final class NavigationState: ObservableObject {
     
-    /// Current navigation path
+    ///The current navigation path, which is a list of screen identifiers in the navigation stack.
     @Published public var path: [AnyHashable] = []
     
-    /// Modal flow presented over current navigation
+    ///The modal flow that is presented over the current navigation.
     @Published public internal(set) var modalPresented: ModalPresentation?
     
     struct Alert {
@@ -53,11 +60,12 @@ public final class NavigationState: ObservableObject {
         }
     }
     
-    /// Currently presented alerts
+    ///A list of currently presented alerts.
     @Published var alerts: [Alert] = []
     
-    /// Parent coordinator presented current navigation modally
+    ///A weak reference to the parent coordinator that presented the current navigation modally, if any.
     public internal(set) weak var presentedBy: (any Coordinator)?
+    
     private var observers: [AnyCancellable] = []
     
     public init() {
@@ -70,6 +78,7 @@ public final class NavigationState: ObservableObject {
         }.store(in: &observers)
     }
     
+    ///Helper method to close the keyboard when navigation or modal state changes.
     private func closeKeyboard() {
         UIApplication.shared.resignFirstResponder()
     }

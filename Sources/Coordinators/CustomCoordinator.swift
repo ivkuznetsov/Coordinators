@@ -16,7 +16,5 @@ public protocol CustomCoordinator: Coordinator {
 
 public extension CustomCoordinator {
     
-    var rootView: some View {
-        destination().withModal(self)
-    }
+    var rootView: some View { destination().withModal(self) }
 }

@@ -8,7 +8,7 @@ import Foundation
 import SwiftUI
 import Combine
 
-///Example of implementation:
+///Example:
 ///
 ///    final class SomeCoordinator: NavigationModalCoordinator {
 ///
@@ -55,6 +55,7 @@ import Combine
 ///     coordinator.present(.modalFlow())
 ///
 
+///A class representing a weak reference for a specific Coordinator, that is passed by as an EnvironmentObject
 public final class Navigation<C: Coordinator>: ObservableObject {
     private(set) weak var object: C?
     private var observer: AnyCancellable?
@@ -62,26 +63,34 @@ public final class Navigation<C: Coordinator>: ObservableObject {
     public init(_ object: C) {
         self.object = object
         
+        ///Observer triggers changes to the SwiftUI view when the Coordinator changes
         observer = object.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }
     }
     
+    ///Access the Coordinator via a function call
     public func callAsFunction() -> C { object! }
 }
 
+///A protocol representing a Coordinator, which manages the navigation flow and must be ObservableObject and Hashable
 public protocol Coordinator: ObservableObject, Hashable { }
 
+///A unique key for associating a Coordinator state
 private var coordinatorStateKey: UInt8 = 0
+
+///A unique key for associating a Coordinator weak reference
 private var coordinatorWeakReferenceKey: UInt8 = 0
-private let syncQueue = DispatchQueue(label: "com.yourapp.coordinator.state")
+
+///A queue for thread-safe state access
+private let coordinatorSyncQueue = DispatchQueue(label: "com.coordinator.state")
 
 public extension Coordinator {
     
     ///Coordinator state, encapsulates current navigation path and presented modal flow and reference to parent coordinator
     var state: NavigationState {
         get {
-            syncQueue.sync {
+            coordinatorSyncQueue.sync {
                 if let state = objc_getAssociatedObject(self, &coordinatorStateKey) as? NavigationState {
                     return state
                 } else {
@@ -93,9 +102,10 @@ public extension Coordinator {
         }
     }
     
+    ///A weak reference to this Coordiantor, it is passed by using EnvironmentObject
     var weakReference: Navigation<Self> {
         get {
-            syncQueue.sync {
+            coordinatorSyncQueue.sync {
                 if let reference = objc_getAssociatedObject(self, &coordinatorWeakReferenceKey) as? Navigation<Self> {
                     return reference
                 } else {
@@ -113,22 +123,22 @@ public extension Coordinator {
     
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.hashValue == rhs.hashValue }
     
-    ///Dismiss current modal navigation
+    ///Dismiss modal navigation of this Coordiantor
     func dismiss() {
         state.presentedBy?.dismissPresented()
     }
     
-    ///Dismiss modal navigation presented over current navigation
+    ///Dismiss modal navigation presented over this Coordinator
     func dismissPresented() {
         state.modalPresented = nil
     }
     
-    ///Move to previous screen of the current navigation
+    ///Move to the previous screen of the current navigation stack
     func pop() {
         state.path.removeLast()
     }
     
-    ///Move to the first screen of the current navigation
+    ///Pops all views and returns to the root view
     func popToRoot() {
         state.path.removeAll()
     }
@@ -136,6 +146,7 @@ public extension Coordinator {
 
 extension Coordinator {
     
+    ///Presents a new modal or navigation presentation based on the given ModalPresentation and resolve policy
     func present(_ presentation: ModalPresentation, resolve: PresentationResolve = .overAll) {
         if let presentedCoordinator = state.modalPresented?.coordinator {
             switch resolve {
@@ -154,38 +165,60 @@ extension Coordinator {
     }
 }
 
+///Extension providing utility functions for presenting alerts
 public extension Coordinator {
-    static var defaultAlertTitle: String { Bundle.main.infoDictionary!["CFBundleDisplayName"] as? String ?? Bundle.main.infoDictionary!["CFBundleName"] as? String ?? "" }
     
+    static var defaultAlertTitle: String {
+        Bundle.main.infoDictionary!["CFBundleDisplayName"] as? String ??
+        Bundle.main.infoDictionary!["CFBundleName"] as? String ?? ""
+    }
+    
+    private var topCoordinator: any Coordinator {
+        state.modalPresented?.coordinator.topCoordinator ?? self
+    }
+    
+    ///Presents an alert with customizable message and actions
     func alert<A: View, M: View>(_ title: String = Self.defaultAlertTitle,
                                  @ViewBuilder _ message: @escaping ()->M,
                                  @ViewBuilder actions: @escaping ()->A) {
-        state.alerts.append(.init(title: title, actions: actions, message: message))
+        topCoordinator.state.alerts.append(.init(title: title, actions: actions, message: message))
     }
     
+    ///Presents an alert with a default "OK" button and custom message
     func alert<M: View>(_ title: String = Self.defaultAlertTitle,
                         @ViewBuilder _ message: @escaping ()->M) {
-        state.alerts.append(.init(title: title, actions: { Button("OK") {} }, message: message))
+        topCoordinator.state.alerts.append(.init(title: title, 
+                                                 actions: { Button("OK") {} },
+                                                 message: message))
     }
     
+    ///Presents an alert with a message and a default "OK" button
     func alert(_ title: String = Self.defaultAlertTitle, message: String) {
-        state.alerts.append(.init(title: title, actions: { Button("OK") {} }, message: { Text(message) }))
+        topCoordinator.state.alerts.append(.init(title: title, 
+                                                 actions: { Button("OK") {} },
+                                                 message: { Text(message) }))
     }
     
+    ///Presents an alert with a message and customizable actions
     func alert<A: View>(_ title: String = Self.defaultAlertTitle,
                         message: String,
                         @ViewBuilder actions: @escaping ()->A) {
-        state.alerts.append(.init(title: title, actions: actions, message: { Text(message) }))
+        topCoordinator.state.alerts.append(.init(title: title,
+                                                 actions: actions,
+                                                 message: { Text(message) }))
     }
 }
 
+///Typealias for a Coordinator that supports both navigation and modal presentations
 public typealias NavigationModalCoordinator = NavigationCoordinator & ModalCoordinator
 
+///Extension defining custom CoordinateSpaces for navigation and modal views
 public extension CoordinateSpace {
     
-    ///Coordinated space related to navigation view
+    ///Coordinate space for a navigation controller
     static let navController = "CoordinatorSpaceNavigationController"
     
-    ///Coordinated space related to modal presentation view
+    ///Coordinate space for modal presentations
     static let modal = "CoordinatorSpaceModal"
 }
+

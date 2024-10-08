@@ -7,28 +7,30 @@
 import Foundation
 import SwiftUI
 
-///Modal presentation stype of the Modal flow
+///Defines the modal presentation style for a modal flow
 public enum ModalStyle {
     
-    ///Present as sheet, takes part of the screen and dimms screen below
+    ///Presents the modal as a sheet, which occupies part of the screen and dims the background
     case sheet
     
-    ///Presents as full screen cover
+    ///Presents the modal as a full-screen cover
     case cover
     
-    ///Presents screen over current navigation. This option is for customizing, it doesn't interfear with native navigation controller or modal presentation flow.
+    /// Presents the modal as an overlay on top of the current navigation.
+    /// This option is customizable and doesn't interfere with the native navigation controller or modal presentation flow.
     case overlay
 }
 
-///Protocol for conforming by a modal navigation flow
+///Protocol to be conformed by a modal navigation flow
 public protocol ModalProtocol: Hashable, Identifiable {
     
-    ///Modal flow presentation style
+    ///The presentation style of the modal flow
     var style: ModalStyle { get }
 }
 
 public extension ModalProtocol {
     
+    ///Default presentation style for modals is `.sheet`
     var style: ModalStyle { .sheet }
     
     var id: Int { hashValue }
@@ -36,6 +38,8 @@ public extension ModalProtocol {
 
 extension ModalProtocol {
     
+    ///Returns a Coordinator If a modal flow contains one.
+    ///It iterates through the properties of the modal flow using reflection.
     var coordinator: (any Coordinator)? {
         for child in Mirror(reflecting: self).children {
             if let value = child.value as? (any Coordinator) {
@@ -46,26 +50,28 @@ extension ModalProtocol {
     }
 }
 
+///Protocol for a Coordinator that manages modals
 public protocol ModalCoordinator: Coordinator {
     associatedtype Modal: ModalProtocol
     associatedtype ModalView: View
     
+    ///A method that returns the destination view for a given modal
     @ViewBuilder func destination(for modal: Modal) -> ModalView
 }
 
-///Resolution for the case when we're trying to present a modal flow over screen which already presents another screen
+///Enum to define how to resolve situations where a modal is already presented by this Coordinator
 public enum PresentationResolve {
     
-    ///Search for currently presented top screen and present our screen over it
+    ///Present the new modal on top of the currently presented screen
     case overAll
     
-    ///Dismiss currently presented screen and present our screen in replace
+    ///Dismiss the currently presented modal and replace it with the new one
     case replaceCurrent
 }
 
 public extension ModalCoordinator {
     
-    ///Present a flow modally over current navigation
+    ///Presents a modal flow over the current navigation using the specified `resolve` strategy
     func present(_ modalFlow: Modal, resolve: PresentationResolve = .overAll) {
         present(.init(modalFlow: modalFlow,
                       destination: { [unowned self] in AnyView(self.destination(for: modalFlow)) }),
@@ -73,10 +79,12 @@ public extension ModalCoordinator {
     }
 }
 
+///A view modifier that manages the presentation of modal views based on the current navigation state
 private struct ModalModifer: ViewModifier {
     
     @ObservedObject var state: NavigationState
     
+    ///Creates a binding for checking if a modal of a specific style is currently presented
     func isPresentedBinding(_ style: ModalStyle) -> Binding<Bool> {
         .init { [weak state] in
             state?.modalPresented?.modalFlow.style == style
@@ -108,15 +116,14 @@ private struct ModalModifer: ViewModifier {
             if state.alerts.count > 0 {
                 state.alerts.removeLast()
             }
-        } ),
-                actions: state.alerts.last?.actions ?? { AnyView(EmptyView()) },
+        } ), actions: state.alerts.last?.actions ?? { AnyView(EmptyView()) },
                 message: state.alerts.last?.message ?? { AnyView(EmptyView()) })
     }
 }
 
 public extension View {
     
-    ///Supply view with ability to present screens using specified coordinator
+    ///Extends the current view to support modal presentation via a specified `Coordinator`
     func withModal<C: Coordinator>(_ coordinator: C) -> some View {
         modifier(ModalModifer(state: coordinator.state)).environmentObject(coordinator.weakReference)
     }

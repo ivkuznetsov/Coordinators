@@ -7,24 +7,26 @@
 import Foundation
 import SwiftUI
 
-///Protocol for conforming by a screen in horizontal navigation flow
+///Protocol for conforming by a screen identifier in horizontal navigation flow
 public protocol ScreenProtocol: Hashable { }
 
+///Protocol that defines navigation-specific behavior
 public protocol NavigationCoordinator: Coordinator {
     associatedtype Screen: ScreenProtocol
     associatedtype ScreenView: View
     
+    ///A method that returns the destination view for a given screen identifier
     @ViewBuilder func destination(for screen: Screen) -> ScreenView
 }
 
 public extension NavigationCoordinator {
     
-    /// Navigate to a new screen in current navigation stack
+    ///Navigate to a new screen in current navigation stack
     func present(_ screen: Screen) {
         state.path.append(screen)
     }
     
-    /// Move back to a specified screen in current navigation
+    ///Move back in the navigation stack to the first screen that meets the specified condition, returns True if the screen has been found
     @discardableResult
     func popTo(where condition: (Screen) -> Bool) -> Bool {
         if let index = state.path.firstIndex(where: {
@@ -39,7 +41,7 @@ public extension NavigationCoordinator {
         return false
     }
     
-    /// Move back to a specified screen in current navigation
+    ///Move back in the navigation stack to a specific screen, returns True if the screen has been found
     @discardableResult
     func popTo(_ element: Screen) -> Bool {
         popTo(where: { $0 == element })
@@ -49,6 +51,7 @@ public extension NavigationCoordinator {
 @available(iOS 16.0, *)
 public extension View {
     
+    ///Extend the view with navigation capabilities using the specified Coordinator
     func withNavigation<C: NavigationCoordinator>(_ coordinator: C) -> some View {
         modifier(NavigationModifer(coordinator: coordinator))
     }
@@ -57,11 +60,13 @@ public extension View {
 @available(iOS 16.0, *)
 public extension NavigationCoordinator {
     
+    /// Creates a view for the given screen identifier and applies both navigation and modal capabilities
     func view(for screen: Screen) -> some View {
         destination(for: screen).withNavigation(self).withModal(self)
     }
 }
 
+///A `ViewModifier` that adds navigation functionality to views managed by a `NavigationCoordinator`
 @available(iOS 16.0, *)
 private struct NavigationModifer<Coordinator: NavigationCoordinator>: ViewModifier {
     
