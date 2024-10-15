@@ -56,6 +56,7 @@ import Combine
 ///
 
 ///A class representing a weak reference for a specific Coordinator, that is passed by as an EnvironmentObject
+@MainActor
 public final class Navigation<C: Coordinator>: ObservableObject {
     private(set) weak var object: C?
     private var observer: AnyCancellable?
@@ -82,37 +83,30 @@ private var coordinatorStateKey: UInt8 = 0
 ///A unique key for associating a Coordinator weak reference
 private var coordinatorWeakReferenceKey: UInt8 = 0
 
-///A queue for thread-safe state access
-private let coordinatorSyncQueue = DispatchQueue(label: "com.coordinator.state")
-
 public extension Coordinator {
     
     ///Coordinator state, encapsulates current navigation path and presented modal flow and reference to parent coordinator
-    var state: NavigationState {
+    @MainActor var state: NavigationState {
         get {
-            coordinatorSyncQueue.sync {
-                if let state = objc_getAssociatedObject(self, &coordinatorStateKey) as? NavigationState {
-                    return state
-                } else {
-                    let state = NavigationState()
-                    objc_setAssociatedObject(self, &coordinatorStateKey, state, .OBJC_ASSOCIATION_RETAIN)
-                    return state
-                }
+            if let state = objc_getAssociatedObject(self, &coordinatorStateKey) as? NavigationState {
+                return state
+            } else {
+                let state = NavigationState()
+                objc_setAssociatedObject(self, &coordinatorStateKey, state, .OBJC_ASSOCIATION_RETAIN)
+                return state
             }
         }
     }
     
     ///A weak reference to this Coordiantor, it is passed by using EnvironmentObject
-    var weakReference: Navigation<Self> {
+    @MainActor var weakReference: Navigation<Self> {
         get {
-            coordinatorSyncQueue.sync {
-                if let reference = objc_getAssociatedObject(self, &coordinatorWeakReferenceKey) as? Navigation<Self> {
-                    return reference
-                } else {
-                    let reference = Navigation(self)
-                    objc_setAssociatedObject(self, &coordinatorWeakReferenceKey, reference, .OBJC_ASSOCIATION_RETAIN)
-                    return reference
-                }
+            if let reference = objc_getAssociatedObject(self, &coordinatorWeakReferenceKey) as? Navigation<Self> {
+                return reference
+            } else {
+                let reference = Navigation(self)
+                objc_setAssociatedObject(self, &coordinatorWeakReferenceKey, reference, .OBJC_ASSOCIATION_RETAIN)
+                return reference
             }
         }
     }
@@ -124,26 +118,27 @@ public extension Coordinator {
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.hashValue == rhs.hashValue }
     
     ///Dismiss modal navigation of this Coordiantor
-    func dismiss() {
+    @MainActor func dismiss() {
         state.presentedBy?.dismissPresented()
     }
     
     ///Dismiss modal navigation presented over this Coordinator
-    func dismissPresented() {
+    @MainActor func dismissPresented() {
         state.modalPresented = nil
     }
     
     ///Move to the previous screen of the current navigation stack
-    func pop() {
+    @MainActor func pop() {
         state.path.removeLast()
     }
     
     ///Pops all views and returns to the root view
-    func popToRoot() {
+    @MainActor func popToRoot() {
         state.path.removeAll()
     }
 }
 
+@MainActor
 extension Coordinator {
     
     ///Presents a new modal or navigation presentation based on the given ModalPresentation and resolve policy
@@ -166,9 +161,10 @@ extension Coordinator {
 }
 
 ///Extension providing utility functions for presenting alerts
+@MainActor
 public extension Coordinator {
     
-    static var defaultAlertTitle: String {
+    static nonisolated var defaultAlertTitle: String {
         Bundle.main.infoDictionary!["CFBundleDisplayName"] as? String ??
         Bundle.main.infoDictionary!["CFBundleName"] as? String ?? ""
     }

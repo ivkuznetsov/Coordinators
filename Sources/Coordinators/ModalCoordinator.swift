@@ -56,7 +56,7 @@ public protocol ModalCoordinator: Coordinator {
     associatedtype ModalView: View
     
     ///A method that returns the destination view for a given modal
-    @ViewBuilder func destination(for modal: Modal) -> ModalView
+    @MainActor @ViewBuilder func destination(for modal: Modal) -> ModalView
 }
 
 ///Enum to define how to resolve situations where a modal is already presented by this Coordinator
@@ -69,6 +69,7 @@ public enum PresentationResolve {
     case replaceCurrent
 }
 
+@MainActor
 public extension ModalCoordinator {
     
     ///Presents a modal flow over the current navigation using the specified `resolve` strategy

@@ -16,9 +16,10 @@ public protocol NavigationCoordinator: Coordinator {
     associatedtype ScreenView: View
     
     ///A method that returns the destination view for a given screen identifier
-    @ViewBuilder func destination(for screen: Screen) -> ScreenView
+    @MainActor @ViewBuilder func destination(for screen: Screen) -> ScreenView
 }
 
+@MainActor
 public extension NavigationCoordinator {
     
     ///Navigate to a new screen in current navigation stack
@@ -58,6 +59,7 @@ public extension View {
 }
 
 @available(iOS 16.0, *)
+@MainActor
 public extension NavigationCoordinator {
     
     /// Creates a view for the given screen identifier and applies both navigation and modal capabilities
