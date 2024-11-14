@@ -22,7 +22,7 @@ public struct ModalPresentation {
     let coordinator: any Coordinator
     
     ///A closure that returns the view to be displayed for the modal.
-    let destination: ()->AnyView
+    let destination: @MainActor ()->AnyView
     
     init(modalFlow: any ModalProtocol, destination: @escaping () -> AnyView) {
         self.modalFlow = modalFlow
