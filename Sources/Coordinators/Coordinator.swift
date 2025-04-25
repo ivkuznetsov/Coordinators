@@ -147,7 +147,9 @@ extension Coordinator {
             switch resolve {
             case .replaceCurrent:
                 dismissPresented()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                
+                // need await for dismiss animation complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.53) { [weak self] in
                     self?.present(presentation, resolve: resolve)
                 }
             case .overAll:
