@@ -127,7 +127,9 @@ public extension View {
     ///Extends the current view to support modal presentation via a specified `Coordinator`
     @MainActor
     func withModal<C: Coordinator>(_ coordinator: C) -> some View {
-        modifier(ModalModifer(state: coordinator.state)).environmentObject(coordinator.weakReference)
+        modifier(ModalModifer(state: coordinator.state))
+            .environmentObject(coordinator.weakReference)
+            .environmentObject(coordinator.anyWeakReference)
     }
 }
 

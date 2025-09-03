@@ -73,6 +73,14 @@ You can access the current coordinator inside any view by injecting it as an env
 ```
 This allows you to trigger navigation actions directly from views, maintaining a clean and decoupled architecture.
 
+Another way if you would like to use protocols:
+
+```swift
+@CoordinatorLink var coordinator: any SomeCoordinator
+```
+
+In this case view will get most recent coordinator and will try to cast it to protocol type.
+
 ## Meta
 
 Ilya Kuznetsov – i.v.kuznecov@gmail.com

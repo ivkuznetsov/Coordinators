@@ -57,11 +57,21 @@ import Combine
 
 ///A class representing a weak reference for a specific Coordinator, that is passed by as an EnvironmentObject
 @MainActor
-public final class Navigation<C: Coordinator>: ObservableObject {
-    private(set) weak var object: C?
+public final class Navigation<T>: ObservableObject {
+    
+    private(set) var object: (any Coordinator)?
     private var observer: AnyCancellable?
     
-    public init(_ object: C) {
+    public init(_ object: T) where T: Coordinator {
+        self.object = object
+        
+        ///Observer triggers changes to the SwiftUI view when the Coordinator changes
+        observer = object.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+    }
+    
+    public init<C: Coordinator>(_ object: C) {
         self.object = object
         
         ///Observer triggers changes to the SwiftUI view when the Coordinator changes
@@ -71,7 +81,18 @@ public final class Navigation<C: Coordinator>: ObservableObject {
     }
     
     ///Access the Coordinator via a function call
-    public func callAsFunction() -> C { object! }
+    public func callAsFunction() -> T { object as! T }
+}
+
+@propertyWrapper
+public struct CoordinatorLink<C>: DynamicProperty {
+    
+    @EnvironmentObject var typedCoordinator: Navigation<C>
+    @EnvironmentObject var coordinator: Navigation<any Coordinator>
+    
+    public var wrappedValue: C { coordinator() as? C ?? typedCoordinator() }
+    
+    public init() { }
 }
 
 ///A protocol representing a Coordinator, which manages the navigation flow and must be ObservableObject and Hashable
@@ -82,6 +103,9 @@ private var coordinatorStateKey: UInt8 = 0
 
 ///A unique key for associating a Coordinator weak reference
 private var coordinatorWeakReferenceKey: UInt8 = 0
+
+///A unique key for associating an any Coordinator weak reference
+private var coordinatorAnyWeakReferenceKey: UInt8 = 0
 
 public extension Coordinator {
     
@@ -111,6 +135,19 @@ public extension Coordinator {
         }
     }
     
+    ///A weak reference to this Coordiantor, it is passed by using EnvironmentObject so that Coordinator can be accessed by any Coordinator reference
+    @MainActor var anyWeakReference: Navigation<any Coordinator> {
+        get {
+            if let reference = objc_getAssociatedObject(self, &coordinatorAnyWeakReferenceKey) as? Navigation<any Coordinator> {
+                return reference
+            } else {
+                let reference = Navigation<any Coordinator>(self)
+                objc_setAssociatedObject(self, &coordinatorAnyWeakReferenceKey, reference, .OBJC_ASSOCIATION_RETAIN)
+                return reference
+            }
+        }
+    }
+    
     func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self))
     }
@@ -124,7 +161,13 @@ public extension Coordinator {
     
     ///Dismiss modal navigation presented over this Coordinator
     @MainActor func dismissPresented() {
+        let modalCoordinator = state.modalPresented?.coordinator
         state.modalPresented = nil
+        
+        // keep it alive until animation is finished
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            _ = modalCoordinator
+        }
     }
     
     ///Move to the previous screen of the current navigation stack
