@@ -10,7 +10,11 @@ import Combine
 
 ///Structure that represents the current modal presentation in the navigation flow.
 ///It holds the modal flow and the associated parent coordinator.
-public struct ModalPresentation {
+public struct ModalPresentation: Equatable {
+    
+    public static func == (lhs: ModalPresentation, rhs: ModalPresentation) -> Bool {
+        lhs.coordinator === rhs.coordinator && lhs.modalFlow.hashValue == rhs.modalFlow.hashValue
+    }
     
     ///A placeholder coordinator used when no coordinator is provided for the modal flow.
     private final class PlaceholderCoordinator: Coordinator { }

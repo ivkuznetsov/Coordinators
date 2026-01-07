@@ -87,10 +87,14 @@ private struct ModalModifer: ViewModifier {
     
     ///Creates a binding for checking if a modal of a specific style is currently presented
     func isPresentedBinding(_ style: ModalStyle) -> Binding<Bool> {
-        .init { [weak state] in
-            state?.modalPresented?.modalFlow.style == style
+        let presented = state.modalPresented
+        
+        return .init {
+            presented?.modalFlow.style == style
         } set: { [weak state] _ in
-            if let presented = state?.modalPresented,
+            guard state?.modalPresented == presented, state?.modalPresented != nil else { return }
+            
+            if let presented,
                let overlayPresented = presented.coordinator.state.modalPresented,
                overlayPresented.modalFlow.style == .overlay {
                 presented.coordinator.state.modalPresented = nil
@@ -106,7 +110,8 @@ private struct ModalModifer: ViewModifier {
                 presented.destination()
                     .coordinateSpace(name: CoordinateSpace.modal)
             }
-        }.sheet(isPresented: isPresentedBinding(.sheet)) { [weak state] in
+        }
+        .sheet(isPresented: isPresentedBinding(.sheet)) { [weak state] in
             state?.modalPresented!.destination()
                 .coordinateSpace(name: CoordinateSpace.modal)
         }.fullScreenCover(isPresented: isPresentedBinding(.cover)) { [weak state] in
