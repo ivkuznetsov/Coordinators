@@ -117,13 +117,18 @@ private struct ModalModifer: ViewModifier {
         }.fullScreenCover(isPresented: isPresentedBinding(.cover)) { [weak state] in
             state?.modalPresented!.destination()
                 .coordinateSpace(name: CoordinateSpace.modal)
-        }.alert(state.alerts.last?.title ?? "",
-                isPresented: Binding(get: { state.alerts.last != nil }, set: { _ in
+        }.alert(state.alerts.first?.title ?? "",
+                isPresented: Binding(get: { state.alerts.count > 0 }, set: { _ in
             if state.alerts.count > 0 {
-                state.alerts.removeLast()
+                let alerts = Array(state.alerts.dropFirst(1))
+                state.alerts = []
+                
+                DispatchQueue.main.async {
+                    state.alerts = alerts
+                }
             }
-        } ), actions: state.alerts.last?.actions ?? { AnyView(EmptyView()) },
-                message: state.alerts.last?.message ?? { AnyView(EmptyView()) })
+        } ), actions: state.alerts.first?.actions ?? { AnyView(EmptyView()) },
+                message: state.alerts.first?.message ?? { AnyView(EmptyView()) })
     }
 }
 
