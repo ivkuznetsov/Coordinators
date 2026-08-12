@@ -124,7 +124,7 @@ private struct ModalModifer: ViewModifier {
                 state.alerts = []
                 
                 DispatchQueue.main.async {
-                    state.alerts = alerts
+                    state.alerts += alerts
                 }
             }
         } ), actions: state.alerts.first?.actions ?? { AnyView(EmptyView()) },
