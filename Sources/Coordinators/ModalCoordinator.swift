@@ -74,14 +74,38 @@ public extension ModalCoordinator {
     
     ///Presents a modal flow over the current navigation using the specified `resolve` strategy
     func present(_ modalFlow: Modal, resolve: PresentationResolve = .overAll) {
-        present(.init(modalFlow: modalFlow,
-                      destination: { [unowned self] in AnyView(self.destination(for: modalFlow)) }),
-                resolve: resolve)
+        self.present(.init(modalFlow: modalFlow,
+                           destination: { [unowned self] in AnyView(self.destination(for: modalFlow)) }),
+                     resolve: resolve)
     }
 }
 
 ///A view modifier that manages the presentation of modal views based on the current navigation state
 private struct ModalModifer: ViewModifier {
+    
+    private struct ViewControllerReader: UIViewRepresentable {
+        let onResolve: (UIViewController) -> Void
+
+        func makeUIView(context: Context) -> UIView {
+            let view = UIView()
+            view.isHidden = true
+
+            DispatchQueue.main.async {
+                var responder: UIResponder? = view
+
+                while let current = responder {
+                    if let viewController = current as? UIViewController {
+                        onResolve(viewController)
+                        break
+                    }
+                    responder = current.next
+                }
+            }
+            return view
+        }
+
+        func updateUIView(_ uiView: UIView, context: Context) { }
+    }
     
     @ObservedObject var state: NavigationState
     
@@ -105,13 +129,14 @@ private struct ModalModifer: ViewModifier {
     }
     
     func body(content: Content) -> some View {
-        content.overlay {
+        content.background {
+            ViewControllerReader { [weak state] in state?.underlyingVC = $0 }
+        }.overlay {
             if let presented = state.modalPresented, presented.modalFlow.style == .overlay {
                 presented.destination()
                     .coordinateSpace(name: CoordinateSpace.modal)
             }
-        }
-        .sheet(isPresented: isPresentedBinding(.sheet)) { [weak state] in
+        }.sheet(isPresented: isPresentedBinding(.sheet)) { [weak state] in
             state?.modalPresented!.destination()
                 .coordinateSpace(name: CoordinateSpace.modal)
         }.fullScreenCover(isPresented: isPresentedBinding(.cover)) { [weak state] in
@@ -127,8 +152,8 @@ private struct ModalModifer: ViewModifier {
                     state.alerts += alerts
                 }
             }
-        } ), actions: state.alerts.first?.actions ?? { AnyView(EmptyView()) },
-                message: state.alerts.first?.message ?? { AnyView(EmptyView()) })
+        }), actions: state.alerts.first?.actions ?? { AnyView(EmptyView()) },
+            message: state.alerts.first?.message ?? { AnyView(EmptyView()) })
     }
 }
 
@@ -142,4 +167,3 @@ public extension View {
             .environmentObject(coordinator.anyWeakReference)
     }
 }
-

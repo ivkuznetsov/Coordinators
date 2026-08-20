@@ -52,6 +52,9 @@ public final class NavigationState: ObservableObject {
     ///The modal flow that is presented over the current navigation.
     @Published public internal(set) var modalPresented: ModalPresentation?
     
+    weak var underlyingVC: UIViewController?
+    var isBeingPresenting: Bool = false
+    
     struct Alert {
         let title: String
         let actions: ()->AnyView

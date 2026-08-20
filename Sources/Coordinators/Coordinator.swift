@@ -186,21 +186,28 @@ extension Coordinator {
     
     ///Presents a new modal or navigation presentation based on the given ModalPresentation and resolve policy
     func present(_ presentation: ModalPresentation, resolve: PresentationResolve = .overAll) {
-        if let presentedCoordinator = state.modalPresented?.coordinator {
-            switch resolve {
-            case .replaceCurrent:
-                dismissPresented()
-                
-                // need await for dismiss animation complete
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.53) { [weak self] in
-                    self?.present(presentation, resolve: resolve)
+        if state.isBeingPresenting { return }
+        state.isBeingPresenting = true
+        
+        Task {
+            await state.underlyingVC?.waitUntilPresentationFinishes()
+            
+            if let presentedCoordinator = state.modalPresented?.coordinator {
+                switch resolve {
+                case .replaceCurrent:
+                    dismissPresented()
+                    try await Task.sleep(for: .seconds(0.53))
+                    state.isBeingPresenting = false
+                    present(presentation, resolve: resolve)
+                case .overAll:
+                    presentedCoordinator.present(presentation, resolve: resolve)
+                    state.isBeingPresenting = false
                 }
-            case .overAll:
-                presentedCoordinator.present(presentation, resolve: resolve)
+            } else {
+                presentation.coordinator.state.presentedBy = self
+                state.modalPresented = presentation
+                state.isBeingPresenting = false
             }
-        } else {
-            presentation.coordinator.state.presentedBy = self
-            state.modalPresented = presentation
         }
     }
 }
@@ -263,3 +270,22 @@ public extension CoordinateSpace {
     static let modal = "CoordinatorSpaceModal"
 }
 
+private extension UIViewController {
+    
+    @MainActor
+    func waitUntilPresentationFinishes() async {
+        while true {
+            let isTransitioning =
+                isBeingDismissed ||
+                isBeingPresented ||
+                presentedViewController?.isBeingDismissed == true ||
+                presentedViewController?.isBeingPresented == true ||
+                transitionCoordinator != nil ||
+                presentedViewController?.transitionCoordinator != nil
+            
+            if !isTransitioning { return }
+            
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+}
